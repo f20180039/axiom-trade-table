@@ -1,49 +1,62 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useDispatch, useSelector } from "react-redux";
+import { INITIAL_TOKENS } from "@/lib/mock-data";
+import { setTokens, updateToken } from "@/store/tokensSlice";
 import { socketService } from "@/lib/socket-mock";
-import { TokenUpdate } from "@/types/token";
+import { RootState } from "@/store/store";
 
 export default function Home() {
-  const [lastUpdate, setLastUpdate] = useState<TokenUpdate | null>(null);
-  useEffect(() => {
-    // Connect to our mock socket
-    const unsubscribe = socketService.subscribe((update) => {
-      console.log("New WebSocket Message:", update);
-      setLastUpdate(update);
-    });
+  const dispatch = useDispatch();
+  const tokens = useSelector((state: RootState) => state.tokens.items);
+  const tokenIds = useSelector((state: RootState) => state.tokens.ids);
 
+  // 1. React Query "Fetch"
+  const { data, isLoading } = useQuery({
+    queryKey: ["tokens-initial"],
+    queryFn: async () => {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return INITIAL_TOKENS;
+    },
+  });
+
+  // 2. Sync Query data to Redux
+  useEffect(() => {
+    if (data) {
+      dispatch(setTokens(data));
+    }
+  }, [data, dispatch]);
+
+  // 3. Listen to WebSocket and Update Redux
+  useEffect(() => {
+    const unsubscribe = socketService.subscribe((update) => {
+      dispatch(updateToken(update));
+    });
     return () => unsubscribe();
-  }, []);
+  }, [dispatch]);
+
+  if (isLoading)
+    return <div className="p-10 text-white">Loading Initial Snapshot...</div>;
 
   return (
-    <main className="p-10 bg-background min-h-screen text-white">
-      <h1 className="text-2xl font-bold mb-4">WebSocket Test Engine</h1>
-      <div className="p-4 border border-border bg-card rounded-md">
-        {lastUpdate ? (
-          <div>
-            <p>
-              Last Updated Token ID:{" "}
-              <span className="text-axiom-blue font-mono">{lastUpdate.id}</span>
-            </p>
-            <p>
-              New Price:{" "}
-              <span
-                className={
-                  lastUpdate.changeDirection === "up"
-                    ? "text-axiom-green"
-                    : "text-axiom-red"
-                }
-              >
-                {lastUpdate.price?.toFixed(4)}
-              </span>
-            </p>
-            <p className="text-text-dim text-sm mt-2">
-              Check browser console for full stream
-            </p>
+    <main className="p-10 text-white">
+      <h1 className="text-2xl font-bold mb-6">State Management Verified</h1>
+      <div className="grid gap-4">
+        {tokenIds.map((id) => (
+          <div
+            key={id}
+            className="p-4 bg-card border border-border rounded-lg flex justify-between"
+          >
+            <span>
+              {tokens?.[id]?.name} ({tokens?.[id]?.symbol})
+            </span>
+            <span className="font-mono text-axiom-yellow">
+              MC: {tokens?.[id]?.marketCap}
+            </span>
           </div>
-        ) : (
-          <p className="text-text-muted">Waiting for socket data...</p>
-        )}
+        ))}
       </div>
     </main>
   );

@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/providers";
 
 const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "Axiom Trade | Pulse",
-  description: "Token discovery table replica",
-};
 
 export default function RootLayout({
   children,
@@ -17,7 +12,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
